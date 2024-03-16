@@ -8,13 +8,15 @@ extern crate std;
 use core::fmt::{self, Display, Formatter};
 use hal::spi::SpiDevice;
 
+
+
 #[macro_use]
 pub mod lowlevel;
 mod rssi;
 
 use lowlevel::convert::*;
-use lowlevel::registers::*;
-use lowlevel::types::*;
+pub use lowlevel::registers::*;
+pub use lowlevel::types::*;
 use rssi::rssi_to_dbm;
 
 /// CC1101 errors.
@@ -48,7 +50,7 @@ impl<SpiE: Display> Display for Error<SpiE> {
 impl<SpiE: Display + core::fmt::Debug> std::error::Error for Error<SpiE> {}
 
 /// High level API for interacting with the CC1101 radio chip.
-pub struct Cc1101<SPI>(lowlevel::Cc1101<SPI>);
+pub struct Cc1101<SPI>(pub lowlevel::Cc1101<SPI>);
 
 impl<SPI, SpiE> Cc1101<SPI>
 where
@@ -144,6 +146,11 @@ where
         let lqi = self.0.read_register(Status::LQI)?;
         Ok(lqi & !(1u8 << 7))
     }
+    /// The CRC check for last packet.
+    pub fn crc_ok(&mut self) -> Result<bool, Error<SpiE>> {
+        let lqi = self.0.read_register(Status::LQI)?;
+        Ok(lqi & (1u8 << 7) > 0)
+    }
 
     /// Configure the sync word to use, and at what level it should be verified.
     pub fn set_sync_mode(&mut self, sync_mode: SyncMode) -> Result<(), Error<SpiE>> {
@@ -217,12 +224,12 @@ where
     pub fn set_radio_mode(&mut self, radio_mode: RadioMode) -> Result<(), Error<SpiE>> {
         let target = match radio_mode {
             RadioMode::Receive => {
-                self.set_radio_mode(RadioMode::Idle)?;
+                // self.set_radio_mode(RadioMode::Idle)?;
                 self.0.write_strobe(Command::SRX)?;
                 MachineState::RX
             }
             RadioMode::Transmit => {
-                self.set_radio_mode(RadioMode::Idle)?;
+                // self.set_radio_mode(RadioMode::Idle)?;
                 self.0.write_strobe(Command::STX)?;
                 MachineState::TX
             }
@@ -279,6 +286,14 @@ where
         Ok(())
     }
 
+    pub fn rx_bytes_available_once(&mut self) -> Result<u8, Error<SpiE>> {
+        let rxbytes = RXBYTES(self.0.read_register(Status::RXBYTES)?);
+        if rxbytes.rxfifo_overflow() == 1 {
+            return Err(Error::RxOverflow);
+        }
+        Ok(rxbytes.num_rxbytes())
+    }
+
     fn rx_bytes_available(&mut self) -> Result<u8, Error<SpiE>> {
         let mut last = 0;
 
@@ -298,18 +313,16 @@ where
         Ok(last)
     }
 
-    // Should also be able to configure MCSM1.RXOFF_MODE to declare what state
-    // to enter after fully receiving a packet.
-    // Possible targets: IDLE, FSTON, TX, RX
-    pub fn receive(&mut self, addr: &mut u8, buf: &mut [u8]) -> Result<u8, Error<SpiE>> {
+    /// Blocks until it has received a full packet, returns packet length
+    pub fn receive(&mut self, buf: &mut [u8]) -> Result<u8, Error<SpiE>> {
         match self.rx_bytes_available() {
             Ok(_nbytes) => {
                 let mut length = 0u8;
-                self.0.read_fifo(addr, &mut length, buf)?;
-                let lqi = self.0.read_register(Status::LQI)?;
+                self.0.read_fifo(&mut length, buf)?;
+                let crc_ok = self.crc_ok()?;
                 self.await_machine_state(MachineState::IDLE)?;
                 self.0.write_strobe(Command::SFRX)?;
-                if (lqi >> 7) != 1 {
+                if !crc_ok {
                     Err(Error::CrcMismatch)
                 } else {
                     Ok(length)
@@ -320,6 +333,13 @@ where
                 Err(err)
             }
         }
+    }
+    pub fn transmit(&mut self, buf: &[u8]) -> Result<(), Error<SpiE>> {
+        self.set_radio_mode(RadioMode::Transmit)?;
+        self.0.write_fifo(buf)?;
+        self.await_machine_state(MachineState::IDLE)?;
+        self.0.write_strobe(Command::SFTX)?;
+        Ok(())
     }
 
     /// Configures raw data to be passed through, without any packet handling.

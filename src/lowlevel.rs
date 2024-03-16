@@ -13,7 +13,7 @@ pub mod types;
 
 use self::registers::*;
 
-pub const FXOSC: u64 = 26_000_000;
+pub const FXOSC: u64 = 27_000_000;
 
 pub struct Cc1101<SPI> {
     pub(crate) spi: SPI,
@@ -41,16 +41,27 @@ where
         Ok(buffer[1])
     }
 
-    pub fn read_fifo(&mut self, addr: &mut u8, len: &mut u8, buf: &mut [u8]) -> Result<(), SpiE> {
-        let mut buffer = [Command::FIFO.addr() | 0xC0, 0, 0];
+    pub fn read_fifo(&mut self, len: &mut u8, buf: &mut [u8]) -> Result<(), SpiE> {
+        let mut buffer = [Command::FIFO.addr() | 0b1100_0000, 0];
 
         self.spi.transaction(&mut [
             Operation::TransferInPlace(&mut buffer),
-            Operation::TransferInPlace(buf),
+            Operation::Read(buf),
         ])?;
 
         *len = buffer[1];
-        *addr = buffer[2];
+
+        Ok(())
+    }
+    /// Buf is prepended with its length
+    pub fn write_fifo(&mut self, buf: &[u8]) -> Result<(), SpiE> {
+        let mut buffer = [Command::FIFO.addr() | 0b0100_0000];
+
+        self.spi.transaction(&mut [
+            Operation::TransferInPlace(&mut buffer),
+            Operation::Write(&[buf.len() as u8]),
+            Operation::Write(buf),
+        ])?;
 
         Ok(())
     }
