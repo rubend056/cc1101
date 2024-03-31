@@ -8,11 +8,11 @@ extern crate std;
 use core::fmt::{self, Display, Formatter};
 use hal::spi::SpiDevice;
 
-
-
 #[macro_use]
 pub mod lowlevel;
-mod rssi;
+pub mod config0;
+mod configs;
+pub mod rssi;
 
 use lowlevel::convert::*;
 pub use lowlevel::registers::*;
@@ -56,6 +56,12 @@ impl<SPI, SpiE> Cc1101<SPI>
 where
     SPI: SpiDevice<u8, Error = SpiE>,
 {
+    /// Make a new device, only returns an instance of Cc1101
+    ///
+    /// You should:
+    ///  - `reset` the device right after
+    ///  - Wait some time (~1ms) for it to stabalize
+    ///  - Then `configure` it with the settings you'll be using
     pub fn new(spi: SPI) -> Result<Self, Error<SpiE>> {
         Ok(Cc1101(lowlevel::Cc1101::new(spi)?))
     }
@@ -142,14 +148,10 @@ where
     }
 
     /// The Link Quality Indicator metric of the current quality of the received signal.
-    pub fn get_lqi(&mut self) -> Result<u8, Error<SpiE>> {
-        let lqi = self.0.read_register(Status::LQI)?;
-        Ok(lqi & !(1u8 << 7))
-    }
     /// The CRC check for last packet.
-    pub fn crc_ok(&mut self) -> Result<bool, Error<SpiE>> {
-        let lqi = self.0.read_register(Status::LQI)?;
-        Ok(lqi & (1u8 << 7) > 0)
+    pub fn get_crc_lqi(&mut self) -> Result<(bool, u8), Error<SpiE>> {
+        let lqi = LQI(self.0.read_register(Status::LQI)?);
+        Ok((lqi.crc_ok() > 0, lqi.lqi()))
     }
 
     /// Configure the sync word to use, and at what level it should be verified.
@@ -248,107 +250,34 @@ where
 
     /// Resets the chip.
     pub fn reset(&mut self) -> Result<(), Error<SpiE>> {
-        self.0.write_strobe(Command::SRES)?;
-        Ok(())
+        Ok(self.0.write_strobe(Command::SRES)?)
+    }
+    pub fn flush_rx(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.0.write_strobe(Command::SFRX)?)
+    }
+    pub fn flush_tx(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.0.write_strobe(Command::SFTX)?)
+    }
+    pub fn to_idle(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.set_radio_mode(RadioMode::Idle)?)
+    }
+    pub fn to_tx(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.set_radio_mode(RadioMode::Transmit)?)
+    }
+    pub fn to_rx(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.set_radio_mode(RadioMode::Receive)?)
     }
 
-    /// Configure some default settings, to be removed in the future.
-    #[rustfmt::skip]
-    pub fn set_defaults(&mut self) -> Result<(), Error<SpiE, >> {
-        self.0.write_strobe(Command::SRES)?;
-
-        self.0.write_register(Config::PKTCTRL0, PKTCTRL0::default()
-            .white_data(0).bits()
-        )?;
-
-        self.set_synthesizer_if(203_125)?;
-
-        self.0.write_register(Config::MDMCFG2, MDMCFG2::default()
-            .dem_dcfilt_off(1).bits()
-        )?;
-
-        self.set_autocalibration(AutoCalibration::FromIdle)?;
-
-        self.0.write_register(Config::AGCCTRL2, AGCCTRL2::default()
-            .max_lna_gain(0x04).bits()
-        )?;
-
-        Ok(())
-    }
-
-    fn await_machine_state(&mut self, target: MachineState) -> Result<(), Error<SpiE>> {
+    pub fn await_machine_state(&mut self, target: MachineState) -> Result<(), Error<SpiE>> {
         loop {
-            let marcstate = MARCSTATE(self.0.read_register(Status::MARCSTATE)?);
-            if target.value() == marcstate.marc_state() {
+            if target.value() == self.get_marc_state()? {
                 break;
             }
         }
         Ok(())
     }
-
-    pub fn rx_bytes_available_once(&mut self) -> Result<u8, Error<SpiE>> {
-        let rxbytes = RXBYTES(self.0.read_register(Status::RXBYTES)?);
-        if rxbytes.rxfifo_overflow() == 1 {
-            return Err(Error::RxOverflow);
-        }
-        Ok(rxbytes.num_rxbytes())
-    }
-
-    fn rx_bytes_available(&mut self) -> Result<u8, Error<SpiE>> {
-        let mut last = 0;
-
-        loop {
-            let rxbytes = RXBYTES(self.0.read_register(Status::RXBYTES)?);
-            if rxbytes.rxfifo_overflow() == 1 {
-                return Err(Error::RxOverflow);
-            }
-
-            let nbytes = rxbytes.num_rxbytes();
-            if nbytes > 0 && nbytes == last {
-                break;
-            }
-
-            last = nbytes;
-        }
-        Ok(last)
-    }
-
-    /// Blocks until it has received a full packet, returns packet length
-    pub fn receive(&mut self, buf: &mut [u8]) -> Result<u8, Error<SpiE>> {
-        match self.rx_bytes_available() {
-            Ok(_nbytes) => {
-                let mut length = 0u8;
-                self.0.read_fifo(&mut length, buf)?;
-                let crc_ok = self.crc_ok()?;
-                self.await_machine_state(MachineState::IDLE)?;
-                self.0.write_strobe(Command::SFRX)?;
-                if !crc_ok {
-                    Err(Error::CrcMismatch)
-                } else {
-                    Ok(length)
-                }
-            }
-            Err(err) => {
-                self.0.write_strobe(Command::SFRX)?;
-                Err(err)
-            }
-        }
-    }
-    pub fn transmit(&mut self, buf: &[u8]) -> Result<(), Error<SpiE>> {
-        self.set_radio_mode(RadioMode::Transmit)?;
-        self.0.write_fifo(buf)?;
-        self.await_machine_state(MachineState::IDLE)?;
-        self.0.write_strobe(Command::SFTX)?;
-        Ok(())
-    }
-
-    /// Configures raw data to be passed through, without any packet handling.
-    pub fn set_raw_mode(&mut self) -> Result<(), Error<SpiE>> {
-        // Serial data output.
-        self.0.write_register(Config::IOCFG0, 0x0d)?;
-        // Disable data whitening and CRC, fixed packet length, asynchronous serial mode.
-        self.0.write_register(Config::PKTCTRL0, 0x30)?;
-        Ok(())
+    pub fn get_marc_state(&mut self) -> Result<u8, Error<SpiE>> {
+        Ok(MARCSTATE(self.0.read_register(Status::MARCSTATE)?).marc_state())
     }
 }
 
