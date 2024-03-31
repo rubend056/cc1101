@@ -52,9 +52,7 @@ impl<SpiE: Display + core::fmt::Debug> std::error::Error for Error<SpiE> {}
 /// High level API for interacting with the CC1101 radio chip.
 pub struct Cc1101<SPI>(pub lowlevel::Cc1101<SPI>);
 
-impl<SPI, SpiE> Cc1101<SPI>
-where
-    SPI: SpiDevice<u8, Error = SpiE>,
+impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
 {
     /// Make a new device, only returns an instance of Cc1101
     ///
