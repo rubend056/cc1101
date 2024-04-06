@@ -28,6 +28,8 @@ where
     /// - waits for radio to go back to Idle
     /// - flushes the TX buffer
     pub fn transmit(&mut self, payload: &[u8;32]) -> Result<(), Error<SpiE>> {
+        // We go to iddle right before only if CCA isn't on mode 0
+		// self.to_idle()?;
         self.0.write_fifo(payload)?;
         self.set_radio_mode(crate::RadioMode::Transmit)?;
         self.await_machine_state(MachineState::IDLE)?;
