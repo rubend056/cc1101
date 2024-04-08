@@ -143,7 +143,8 @@ pub fn config_1<T: SpiDevice>(cc1101: &mut Cc1101<T>) {
       .write_register(Config::FREND0, FREND0::default().pa_power(7).bits())
       .unwrap();
 
-  cc1101.0.write_register(Config::CHANNR, 31).unwrap();
+  // Set channel
+  cc1101.0.write_register(Config::CHANNR, 18).unwrap();
 
   // Set IF 316.4kHz
   cc1101
