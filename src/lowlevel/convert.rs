@@ -1,5 +1,4 @@
 use crate::lowlevel::FXOSC;
-use core::convert::TryInto;
 
 pub const fn from_frequency(hz: u64) -> (u8, u8, u8) {
     let freq = hz * 1u64.rotate_left(16) / FXOSC;

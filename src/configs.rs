@@ -3,7 +3,6 @@
 // };
 // use cc1101::{GdoCfg, PacketLength, FREND0, IOCFG2, PKTCTRL0};
 use embedded_hal::spi::SpiDevice;
-use heapless::Vec;
 
 
 use crate::lowlevel::registers::*;
@@ -67,61 +66,61 @@ use crate::{Cc1101};
 // 20 Wake on Radio (default is good)
 // 20..2F BS stuff
 
-/// Preamble quality min 16 consecutive changes, CRC, CRC auto flush, no append status, no address check, variable packet length,
-/// Address 0, Channel 0, IF 395.5kHz, Carrier 902.4MHz, Filter Bandwidth 60kHz,
-/// Data Rate 119kBaud, 4 byte preamble, Mouldation 2-FSK, Channel spacing 62.416MHz, Modulator Deviation 29.66kHz,
-/// Autocalibration from Iddle
-pub fn config_0<T: SpiDevice>(cc1101: &mut Cc1101<T>) {
-    // Set good preamble quality, turn on CRC flush
-    // and turn off Append Status on incoming data
-    cc1101
-        .0
-        .write_register(
-            Config::PKTCTRL1,
-            PKTCTRL1::default()
-                .pqt(4)
-                .crc_autoflush(1)
-                .append_status(0)
-                .bits(),
-        )
-        .unwrap();
+// /// Preamble quality min 16 consecutive changes, CRC, CRC auto flush, no append status, no address check, variable packet length,
+// /// Address 0, Channel 0, IF 395.5kHz, Carrier 902.4MHz, Filter Bandwidth 60kHz,
+// /// Data Rate 119kBaud, 4 byte preamble, Mouldation 2-FSK, Channel spacing 62.416MHz, Modulator Deviation 29.66kHz,
+// /// Autocalibration from Iddle
+// pub fn config_0<T: SpiDevice>(cc1101: &mut Cc1101<T>) {
+//     // Set good preamble quality, turn on CRC flush
+//     // and turn off Append Status on incoming data
+//     cc1101
+//         .0
+//         .write_register(
+//             Config::PKTCTRL1,
+//             PKTCTRL1::default()
+//                 .pqt(4)
+//                 .crc_autoflush(1)
+//                 .append_status(0)
+//                 .bits(),
+//         )
+//         .unwrap();
 
-    // Set carrier base frequency 902.4 MHz
-    cc1101.0.write_register(Config::FREQ2, 0x21).unwrap();
-    cc1101.0.write_register(Config::FREQ1, 0x6C).unwrap();
-    cc1101.0.write_register(Config::FREQ0, 0x1D).unwrap();
+//     // Set carrier base frequency 902.4 MHz
+//     cc1101.0.write_register(Config::FREQ2, 0x21).unwrap();
+//     cc1101.0.write_register(Config::FREQ1, 0x6C).unwrap();
+//     cc1101.0.write_register(Config::FREQ0, 0x1D).unwrap();
 
-    // Set filter bandwidth to 60 kHz
-    cc1101
-        .0
-        .write_register(
-            Config::MDMCFG4,
-            MDMCFG4::default().chanbw_m(3).chanbw_e(3).bits(),
-        )
-        .unwrap();
+//     // Set filter bandwidth to 60 kHz
+//     cc1101
+//         .0
+//         .write_register(
+//             Config::MDMCFG4,
+//             MDMCFG4::default().chanbw_m(3).chanbw_e(3).bits(),
+//         )
+//         .unwrap();
 
-    // Set channel spacing to 62.416 kHz
-    cc1101
-        .0
-        .write_register(Config::MDMCFG1, MDMCFG1::default().chanspc_e(1).bits())
-        .unwrap();
-    cc1101
-        .0
-        .write_register(Config::MDMCFG0, MDMCFG0::default().chanspc_m(47).bits())
-        .unwrap();
-    // Set deviation to 29.66 kHz
-    cc1101
-        .0
-        .write_register(
-            Config::DEVIATN,
-            DEVIATN::default().deviation_m(1).deviation_e(4).bits(),
-        )
-        .unwrap();
+//     // Set channel spacing to 62.416 kHz
+//     cc1101
+//         .0
+//         .write_register(Config::MDMCFG1, MDMCFG1::default().chanspc_e(1).bits())
+//         .unwrap();
+//     cc1101
+//         .0
+//         .write_register(Config::MDMCFG0, MDMCFG0::default().chanspc_m(47).bits())
+//         .unwrap();
+//     // Set deviation to 29.66 kHz
+//     cc1101
+//         .0
+//         .write_register(
+//             Config::DEVIATN,
+//             DEVIATN::default().deviation_m(1).deviation_e(4).bits(),
+//         )
+//         .unwrap();
 
-    cc1101
-        .set_autocalibration(AutoCalibration::FromIdle)
-        .unwrap();
-}
+//     cc1101
+//         .set_autocalibration(AutoCalibration::FromIdle)
+//         .unwrap();
+// }
 
 /// Same as config_0, but:
 /// - Base Frequency 902.5Mhz (0x216D0A)
