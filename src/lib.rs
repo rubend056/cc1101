@@ -264,6 +264,14 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
     pub fn flush_tx(&mut self) -> Result<(), Error<SpiE>> {
         Ok(self.0.write_strobe(Command::SFTX)?)
     }
+    /// Sends a no-op, so the chip wakes up from power down.
+    pub fn wake_up(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.0.write_strobe(Command::SNOP)?)
+    }
+    /// Enter pwr down mode when CSn goes high
+    pub fn power_down(&mut self) -> Result<(), Error<SpiE>> {
+        Ok(self.0.write_strobe(Command::SPWD)?)
+    }
     pub fn to_idle(&mut self) -> Result<(), Error<SpiE>> {
         Ok(self.set_radio_mode(RadioMode::Idle)?)
     }
@@ -273,6 +281,7 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
     pub fn to_rx(&mut self) -> Result<(), Error<SpiE>> {
         Ok(self.set_radio_mode(RadioMode::Receive)?)
     }
+
 
     pub fn await_machine_state(&mut self, target: MachineState) -> Result<(), Error<SpiE>> {
         loop {
