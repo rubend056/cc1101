@@ -221,8 +221,17 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
     }
 
     /// Set radio in Receive/Transmit/Idle/Calibrate mode.
+    /// 
+    /// Blocks until radio is in that mode.
     pub fn set_radio_mode(&mut self, radio_mode: RadioMode) -> Result<(), Error<SpiE>> {
-        let target = match radio_mode {
+        let target = self.send_radio_mode_strobe(radio_mode)?;
+        self.await_machine_state(target)
+    }
+    /// Send command strobe for Receive/Transmit/Idle/Calibrate mode.
+    /// 
+    /// Returns machine state for that RadioMode.
+    pub fn send_radio_mode_strobe(&mut self, radio_mode: RadioMode)-> Result<MachineState, Error<SpiE>> {
+        Ok(match radio_mode {
             RadioMode::Receive => {
                 // self.set_radio_mode(RadioMode::Idle)?;
                 self.0.write_strobe(Command::SRX)?;
@@ -242,8 +251,7 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
                 self.0.write_strobe(Command::SCAL)?;
                 MachineState::IDLE
             }
-        };
-        self.await_machine_state(target)
+        })
     }
 
     /// Resets the chip.
@@ -268,11 +276,14 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
 
     pub fn await_machine_state(&mut self, target: MachineState) -> Result<(), Error<SpiE>> {
         loop {
-            if target.value() == self.get_marc_state()? {
+            if self.is_state_machine(target)? {
                 break;
             }
         }
         Ok(())
+    }
+    pub fn is_state_machine(&mut self,target: MachineState) -> Result<bool, Error<SpiE>> {
+        Ok(target.value() == self.get_marc_state()?)
     }
     pub fn get_marc_state(&mut self) -> Result<u8, Error<SpiE>> {
         Ok(MARCSTATE(self.0.read_register(Status::MARCSTATE)?).marc_state())

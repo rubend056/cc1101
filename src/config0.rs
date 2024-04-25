@@ -33,8 +33,28 @@ where
         self.0.write_fifo(payload)?;
         self.set_radio_mode(crate::RadioMode::Transmit)?;
         self.await_machine_state(MachineState::IDLE)?;
-        self.0.write_strobe(Command::SFTX)?;
+        self.flush_tx()?;
         Ok(())
+    }
+    /// We don't wait until radio is in TX.
+    /// We just do the required steps for transmission to start.
+    /// 
+    /// - write payload to FIFO
+    /// - sends command strobe for transmit mode
+    pub fn transmit_start(&mut self, payload: &[u8; 32]) -> Result<(), Error<SpiE>> {
+        self.0.write_fifo(payload)?;
+        self.send_radio_mode_strobe(crate::RadioMode::Transmit)?;
+        Ok(())
+    }
+    /// - waits for radio to go back to Iddle
+    /// - flushes the TX buffer
+    pub fn transmit_poll(&mut self) -> nb::Result<(), Error<SpiE>> {
+        if self.is_state_machine(MachineState::IDLE)? {
+            self.flush_tx()?;
+            Ok(())
+        } else {
+            nb::Result::Err(nb::Error::WouldBlock) 
+        }
     }
 
     // Retransmissions and acks are a good idea but that would mean rethinking our packets
