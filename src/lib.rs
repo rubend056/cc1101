@@ -264,9 +264,12 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
     pub fn flush_tx(&mut self) -> Result<(), Error<SpiE>> {
         Ok(self.0.write_strobe(Command::SFTX)?)
     }
-    /// Sends a no-op, so the chip wakes up from power down.
-    pub fn wake_up(&mut self) -> Result<(), Error<SpiE>> {
-        Ok(self.0.write_strobe(Command::SNOP)?)
+    /// Sends a no-op continuously
+    /// 
+    /// Blocks until chip is ready.
+    pub fn wake_up_wait(&mut self) -> Result<(), Error<SpiE>> {
+        while self.0.chip_rdyn()? == false {}
+        Ok(())
     }
     /// Enter pwr down mode when CSn goes high
     pub fn power_down(&mut self) -> Result<(), Error<SpiE>> {

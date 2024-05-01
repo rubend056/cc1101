@@ -38,7 +38,7 @@ where
     }
     /// We don't wait until radio is in TX.
     /// We just do the required steps for transmission to start.
-    /// 
+    ///
     /// - write payload to FIFO
     /// - sends command strobe for transmit mode
     pub fn transmit_start(&mut self, payload: &[u8; 32]) -> Result<(), Error<SpiE>> {
@@ -53,12 +53,12 @@ where
             self.flush_tx()?;
             Ok(())
         } else {
-            nb::Result::Err(nb::Error::WouldBlock) 
+            nb::Result::Err(nb::Error::WouldBlock)
         }
     }
 
     // Retransmissions and acks are a good idea but that would mean rethinking our packets
-    // Because it would need a packet counter involved :( so that receiver doesn't get 
+    // Because it would need a packet counter involved :( so that receiver doesn't get
     // same packet multiple times.
 
     // /// If packet received
@@ -71,7 +71,7 @@ where
 
     // /// Transmits, then switches to rx and waits for ack payload
     // /// Ack payload is p[3] == 55, that doesn't mean
-    // /// 
+    // ///
     // /// - retries + 1 number of transmissions
     // pub fn transmit_with_retries<P: hal::digital::InputPin, D: hal::delay::DelayNs>(
     //     &mut self,
@@ -93,7 +93,12 @@ where
     //     Ok(false)
     // }
 
-    pub fn configure(&mut self) {
-        config_1(self)
+    pub fn configure(&mut self)-> Result<(), SpiE> {
+        config_1(self);
+        self.write_patable()?;
+        Ok(())
+    }
+    pub fn write_patable(&mut self) -> Result<(), SpiE> {
+        self.0.write_patable(&[0x03, 0x0E, 0x1E, 0x27, 0x8E, 0xCD, 0xC7, 0xC0])
     }
 }

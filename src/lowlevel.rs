@@ -41,20 +41,16 @@ where
         Ok(buffer[1])
     }
 
-    fn read_burst(&mut self, addr:u8, buf: &mut [u8]) -> Result<(), SpiE> {
+    fn read_burst(&mut self, addr: u8, buf: &mut [u8]) -> Result<(), SpiE> {
         let mut buffer = [addr | 0b1100_0000];
-        self.spi.transaction(&mut [
-            Operation::TransferInPlace(&mut buffer),
-            Operation::Read(buf),
-        ])?;
+        self.spi
+            .transaction(&mut [Operation::TransferInPlace(&mut buffer), Operation::Read(buf)])?;
         Ok(())
     }
-    fn write_burst(&mut self, addr:u8, buf: &[u8]) -> Result<(), SpiE> {
+    fn write_burst(&mut self, addr: u8, buf: &[u8]) -> Result<(), SpiE> {
         let mut buffer = [addr | 0b0100_0000];
-        self.spi.transaction(&mut [
-            Operation::TransferInPlace(&mut buffer),
-            Operation::Write(buf),
-        ])?;
+        self.spi
+            .transaction(&mut [Operation::TransferInPlace(&mut buffer), Operation::Write(buf)])?;
         Ok(())
     }
 
@@ -78,6 +74,14 @@ where
     pub fn write_strobe(&mut self, com: Command) -> Result<(), SpiE> {
         self.spi.write(&[com.addr()])?;
         Ok(())
+    }
+    /// Sends a NoOp to read status byte
+    /// 
+    /// Returns wether chip is ready to accept commands (when chip_rdyn (bit 7) is low (false))
+    pub fn chip_rdyn(&mut self) -> Result<bool, SpiE> {
+        let mut c = [Command::SNOP.addr()];
+        self.spi.transfer_in_place(&mut c)?;
+        Ok(c[0] & 0x80 == 0)
     }
 
     pub fn write_register<R>(&mut self, reg: R, byte: u8) -> Result<(), SpiE>

@@ -200,10 +200,6 @@ pub fn config_1<T: SpiDevice>(cc1101: &mut Cc1101<T>) {
 
   cc1101
       .0
-      .write_patable(&[0x03, 0x0E, 0x1E, 0x27, 0x8E, 0xCD, 0xC7, 0xC0])
-      .unwrap();
-  cc1101
-      .0
       .write_register(
           Config::PKTCTRL0,
           PKTCTRL0::default().crc_en(1).white_data(1).bits(),
