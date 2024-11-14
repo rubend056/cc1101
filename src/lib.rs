@@ -5,7 +5,9 @@ extern crate embedded_hal as hal;
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(feature = "std")]
 use core::fmt::{self, Display, Formatter};
+
 use hal::spi::SpiDevice;
 
 #[macro_use]
@@ -36,6 +38,7 @@ impl<SpiE> From<SpiE> for Error<SpiE> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<SpiE: Display> Display for Error<SpiE> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
@@ -272,6 +275,8 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI>
         Ok(())
     }
     /// Enter pwr down mode when CSn goes high
+    /// Remember that patable is lost afterwards
+    /// so it has to be set again with `write_patable`
     pub fn power_down(&mut self) -> Result<(), Error<SpiE>> {
         Ok(self.0.write_strobe(Command::SPWD)?)
     }

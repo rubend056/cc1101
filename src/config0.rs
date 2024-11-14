@@ -1,7 +1,7 @@
 use crate::{configs::config_1, Cc1101, Error};
 use hal::spi::SpiDevice;
 
-use crate::lowlevel::{registers::*, types::*};
+use crate::lowlevel::types::*;
 
 impl<SPI, SpiE> Cc1101<SPI>
 where
@@ -93,7 +93,7 @@ where
     //     Ok(false)
     // }
 
-    pub fn configure(&mut self)-> Result<(), SpiE> {
+    pub fn configure(&mut self) -> Result<(), SpiE> {
         config_1(self);
         self.write_patable()?;
         Ok(())
