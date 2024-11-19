@@ -7,8 +7,8 @@ use embedded_hal::spi::SpiDevice;
 
 use crate::lowlevel::registers::*;
 use crate::lowlevel::types::*;
+use crate::Cc1101;
 use crate::PacketLength;
-use crate::{Cc1101};
 // We're gonna look at the registers so we can set our own good settings,
 // for variable packet length, no address check, default syncword,
 // base frequency 902, channel 0.
@@ -131,103 +131,109 @@ use crate::{Cc1101};
 /// - Deviation 132kHz (m=2,e=6)
 /// - Channel spacing 421kHz (Max) (m=255,e=3)
 pub fn config_1<T: SpiDevice>(cc1101: &mut Cc1101<T>) {
-  // Set carrier base frequency 902.5 MHz
-  cc1101.0.write_register(Config::FREQ2, 0x21).unwrap();
-  cc1101.0.write_register(Config::FREQ1, 0x6D).unwrap();
-  cc1101.0.write_register(Config::FREQ0, 0x0A).unwrap();
+	// Set carrier base frequency 902.5 MHz
+	cc1101.0.write_register(Config::FREQ2, 0x21).unwrap();
+	cc1101.0.write_register(Config::FREQ1, 0x6D).unwrap();
+	cc1101.0.write_register(Config::FREQ0, 0x0A).unwrap();
 
-  // Set power level to max
-  cc1101
-      .0
-      .write_register(Config::FREND0, FREND0::default().pa_power(7).bits())
-      .unwrap();
+	// Set power level to max
+	cc1101
+		.0
+		.write_register(Config::FREND0, FREND0::default().pa_power(7).bits())
+		.unwrap();
 
-  // Set channel
-  cc1101.0.write_register(Config::CHANNR, 18).unwrap();
+	// Set channel
+	cc1101.0.write_register(Config::CHANNR, 18).unwrap();
 
-  // Set IF 316.4kHz
-  cc1101
-      .0
-      .write_register(Config::FSCTRL1, FSCTRL1::default().freq_if(12).bits())
-      .unwrap();
+	// Set IF 316.4kHz
+	cc1101
+		.0
+		.write_register(Config::FSCTRL1, FSCTRL1::default().freq_if(12).bits())
+		.unwrap();
 
-  // Set filter bandwidth to 562.5kHz, Data rate 250kBaud
-  cc1101
-      .0
-      .write_register(
-          Config::MDMCFG4,
-          MDMCFG4::default()
-              .chanbw_m(2)
-              .chanbw_e(0)
-              .drate_e(13)
-              .bits(),
-      )
-      .unwrap();
-  cc1101
-      .0
-      .write_register(Config::MDMCFG3, MDMCFG3::default().drate_m(48).bits())
-      .unwrap();
+	// Set filter bandwidth to 562.5kHz, Data rate 250kBaud
+	cc1101
+		.0
+		.write_register(
+			Config::MDMCFG4,
+			MDMCFG4::default()
+				.chanbw_m(2)
+				.chanbw_e(0)
+				.drate_e(13)
+				.bits(),
+		)
+		.unwrap();
+	cc1101
+		.0
+		.write_register(Config::MDMCFG3, MDMCFG3::default().drate_m(48).bits())
+		.unwrap();
 
-  // Set channel spacing to 421kHz (max)
-  cc1101
-      .0
-      .write_register(
-          Config::MDMCFG1,
-          MDMCFG1::default()
-              .chanspc_e(3)
-              .fec_en(1)
-              .num_preamble(7)
-              .bits(),
-      )
-      .unwrap();
-  cc1101
-      .0
-      .write_register(Config::MDMCFG0, MDMCFG0::default().chanspc_m(255).bits())
-      .unwrap();
-  // Set modulation to GFSK
-  cc1101
-      .0
-      .write_register(Config::MDMCFG2, MDMCFG2::default().mod_format(1).bits())
-      .unwrap();
-  // Set deviation to 132kHz
-  cc1101
-      .0
-      .write_register(
-          Config::DEVIATN,
-          DEVIATN::default().deviation_m(2).deviation_e(6).bits(),
-      )
-      .unwrap();
+	// Set channel spacing to 421kHz (max)
+	cc1101
+		.0
+		.write_register(
+			Config::MDMCFG1,
+			MDMCFG1::default()
+				.chanspc_e(3)
+				.fec_en(1)
+				.num_preamble(7)
+				.bits(),
+		)
+		.unwrap();
+	cc1101
+		.0
+		.write_register(Config::MDMCFG0, MDMCFG0::default().chanspc_m(255).bits())
+		.unwrap();
+	// Set modulation to GFSK
+	cc1101
+		.0
+		.write_register(Config::MDMCFG2, MDMCFG2::default().mod_format(1).bits())
+		.unwrap();
+	// Set deviation to 132kHz
+	cc1101
+		.0
+		.write_register(
+			Config::DEVIATN,
+			DEVIATN::default().deviation_m(2).deviation_e(6).bits(),
+		)
+		.unwrap();
 
-  cc1101
-      .0
-      .write_register(
-          Config::PKTCTRL0,
-          PKTCTRL0::default().crc_en(1).white_data(1).bits(),
-      )
-      .unwrap();
+	cc1101
+		.0
+		.write_register(
+			Config::PKTCTRL0,
+			PKTCTRL0::default().crc_en(1).white_data(1).bits(),
+		)
+		.unwrap();
 
-  // Keep radio in rx mode even after packet received, make CCA always on
-  cc1101
-      .0
-      .write_register(Config::MCSM1, MCSM1::default().rxoff_mode(3).cca_mode(0).bits())
-      .unwrap();
+	// Keep radio in rx mode even after packet received, make CCA always on
+	cc1101
+		.0
+		.write_register(
+			Config::MCSM1,
+			MCSM1::default().rxoff_mode(3).cca_mode(0).bits(),
+		)
+		.unwrap();
 
-  cc1101
-      .0
-      .write_register(
-          Config::PKTCTRL1,
-          PKTCTRL1::default()
-              .pqt(4)
-              .crc_autoflush(1)
-              .append_status(0)
-              .bits(),
-      )
-      .unwrap();
+	cc1101
+		.0
+		.write_register(
+			Config::PKTCTRL1,
+			PKTCTRL1::default()
+				.pqt(4)
+				.crc_autoflush(1)
+				.append_status(0)
+				.bits(),
+		)
+		.unwrap();
 
-  cc1101
-      .set_autocalibration(AutoCalibration::FromIdle)
-      .unwrap();
-  cc1101.set_packet_length(PacketLength::Fixed(32)).unwrap();
+	cc1101
+		.set_autocalibration(AutoCalibration::FromIdle)
+		.unwrap();
+	cc1101.set_packet_length(PacketLength::Fixed(32)).unwrap();
 
-  cc1101.0.write_register(Config::IOCFG2, GdoCfg::CRC_OK.value()).unwrap();
+	cc1101
+		.0
+		.write_register(Config::IOCFG2, GdoCfg::CRC_OK.value())
+		.unwrap();
 }

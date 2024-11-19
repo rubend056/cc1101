@@ -1,28 +1,28 @@
 use core::ops::Range;
 
 pub trait OffsetSize {
-    fn offset(self) -> u8;
-    fn size(self) -> u8;
+	fn offset(self) -> u8;
+	fn size(self) -> u8;
 }
 
 impl OffsetSize for u8 {
-    fn offset(self) -> u8 {
-        self
-    }
+	fn offset(self) -> u8 {
+		self
+	}
 
-    fn size(self) -> u8 {
-        1
-    }
+	fn size(self) -> u8 {
+		1
+	}
 }
 
 impl OffsetSize for Range<u8> {
-    fn offset(self) -> u8 {
-        self.start
-    }
+	fn offset(self) -> u8 {
+		self.start
+	}
 
-    fn size(self) -> u8 {
-        self.end - self.start
-    }
+	fn size(self) -> u8 {
+		self.end - self.start
+	}
 }
 
 #[derive(Clone, Copy)]
