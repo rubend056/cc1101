@@ -24,12 +24,12 @@ use rssi::rssi_to_dbm;
 /// CC1101 errors.
 #[derive(Debug)]
 pub enum Error<SpiE> {
+	/// Platform-dependent SPI-errors, such as IO errors.
+	Spi(SpiE),
 	/// The RX FIFO buffer overflowed, too small buffer for configured packet length.
 	RxOverflow,
 	/// Corrupt packet received with invalid CRC.
 	CrcMismatch,
-	/// Platform-dependent SPI-errors, such as IO errors.
-	Spi(SpiE),
 }
 
 impl<SpiE> From<SpiE> for Error<SpiE> {
