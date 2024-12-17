@@ -288,7 +288,7 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI> {
 	///
 	/// Blocks until chip is ready.
 	pub fn wake_up_wait(&mut self) -> Result<(), Error<SpiE>> {
-		while self.0.chip_rdyn()? == false {}
+		while !(self.0.chip_rdyn()?) {}
 		Ok(())
 	}
 	/// Enter pwr down mode when CSn goes high
@@ -298,13 +298,13 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI> {
 		Ok(self.0.write_strobe(Command::SPWD)?)
 	}
 	pub fn to_idle(&mut self) -> Result<(), Error<SpiE>> {
-		Ok(self.set_radio_mode(RadioMode::Idle)?)
+		self.set_radio_mode(RadioMode::Idle)
 	}
 	pub fn to_tx(&mut self) -> Result<(), Error<SpiE>> {
-		Ok(self.set_radio_mode(RadioMode::Transmit)?)
+		self.set_radio_mode(RadioMode::Transmit)
 	}
 	pub fn to_rx(&mut self) -> Result<(), Error<SpiE>> {
-		Ok(self.set_radio_mode(RadioMode::Receive)?)
+		self.set_radio_mode(RadioMode::Receive)
 	}
 
 
