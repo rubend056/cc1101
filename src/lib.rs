@@ -244,6 +244,12 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI> {
 		let target = self.send_radio_mode_strobe(radio_mode)?;
 		self.await_machine_state(target)
 	}
+	#[cfg(feature = "tokio")]
+	pub  async fn set_radio_mode_async(&mut self, radio_mode: RadioMode) -> Result<(), Error<SpiE>> {
+		let target = self.send_radio_mode_strobe(radio_mode)?;
+		self.await_machine_state(target)
+	}
+	/// Set radio mode but in 
 	/// Send command strobe for Receive/Transmit/Idle/Calibrate mode.
 	///
 	/// Returns machine state for that RadioMode.
@@ -306,10 +312,35 @@ impl<SPI: SpiDevice<u8, Error = SpiE>, SpiE> Cc1101<SPI> {
 	pub fn to_rx(&mut self) -> Result<(), Error<SpiE>> {
 		self.set_radio_mode(RadioMode::Receive)
 	}
+	#[cfg(feature = "tokio")]
+	pub async fn to_idle_async(&mut self) -> Result<(), Error<SpiE>> {
+		self.set_radio_mode_async(RadioMode::Idle).await
+	}
+	#[cfg(feature = "tokio")]
+	pub async fn to_tx_async(&mut self) -> Result<(), Error<SpiE>> {
+		self.set_radio_mode_async(RadioMode::Transmit).await
+	}
+	#[cfg(feature = "tokio")]
+	pub async fn to_rx_async(&mut self) -> Result<(), Error<SpiE>> {
+		self.set_radio_mode_async(RadioMode::Receive).await
+	}
 
 
 	pub fn await_machine_state(&mut self, target: MachineState) -> Result<(), Error<SpiE>> {
 		loop {
+			if self.is_state_machine(target)? {
+				break;
+			}
+		}
+		Ok(())
+	}
+	#[cfg(feature = "tokio")]
+	pub async fn await_machine_state_async(&mut self, target: MachineState) -> Result<(), Error<SpiE>> {
+		let mut interval = tokio::time::interval(std::time::Duration::from_micros(100));
+		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+		interval.tick().await; // Let first instant tick happen
+		loop {
+			interval.tick().await;
 			if self.is_state_machine(target)? {
 				break;
 			}
